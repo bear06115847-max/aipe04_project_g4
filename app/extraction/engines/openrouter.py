@@ -38,7 +38,8 @@ ENGINE_NAME = "openrouter"
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 PROMPT_VERSION = "g1"  # 與 Gemini 共用提示詞；改提示詞或結構就要加版本，engine_version 會跟著變
 TEMPERATURE = 0.0
-TIMEOUT_SECONDS = 120
+# 使用者同步等待，整體上限約 60 秒：每次呼叫 28 秒，主型號逾時改呼叫備援最多再 28 秒；多張照片由 extract() 同時處理
+TIMEOUT_SECONDS = 28
 _RETRYABLE_STATUS = {408, 429}  # 加上所有 5xx
 
 # (請求內容) → 服務回傳的 JSON。HTTP 錯誤以 urllib.error.HTTPError 拋出。測試換成假的，不真的連網

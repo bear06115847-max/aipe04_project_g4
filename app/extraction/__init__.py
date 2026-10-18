@@ -7,6 +7,7 @@ VLM 引擎（直接讀出結構，例如 OpenRouter 的 Gemini 3.8 Flash）經�
 """
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID
@@ -69,7 +70,9 @@ def extract(
     sources = quality
 
     if engine is not None:
-        results = [_run_engine(engine, img) for img in accepted]
+        # 多張照片同時送出，等待時間取最慢的一張，不是加總
+        with ThreadPoolExecutor(max_workers=len(accepted)) as pool:
+            results = list(pool.map(lambda img: _run_engine(engine, img), accepted))
         if any(r.reading is None for r in results):
             # 只有文字區塊（OCR）、沒有結構化結果：不回範例草稿，免得假成分配上真的引擎版本
             raise ExtractionError("辨識引擎沒有回傳結構化結果")
