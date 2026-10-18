@@ -8,6 +8,7 @@
 """
 
 import json
+import logging
 import os
 from datetime import UTC, datetime
 from functools import lru_cache
@@ -83,6 +84,7 @@ class OpenRouterExtractor(StubExtractor):
 def get_extractor() -> Extractor:
     mode = os.environ.get("EXTRACTOR", "stub")
     if mode == "stub":
+        logging.getLogger(__name__).warning("EXTRACTOR=stub：辨識回傳假資料，正式環境要設成 openrouter")
         return StubExtractor()
     if mode == "openrouter":
         return OpenRouterExtractor(OpenRouterEngine.from_env())
