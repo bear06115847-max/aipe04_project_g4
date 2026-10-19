@@ -40,6 +40,8 @@ PROMPT_VERSION = "g1"  # 與 Gemini 共用提示詞；改提示詞或結構就�
 TEMPERATURE = 0.0
 # 使用者同步等待，整體上限約 60 秒：每次呼叫 28 秒，主型號逾時改呼叫備援最多再 28 秒；多張照片由 extract() 同時處理
 TIMEOUT_SECONDS = 28
+# 長邊超過就先縮小再送：比較集實測（97%）的照片長邊約 2400 像素；手機原圖約 4000 像素，送原圖只會更慢
+MAX_SIDE = 2400
 _RETRYABLE_STATUS = {408, 429}  # 加上所有 5xx
 
 # (請求內容) → 服務回傳的 JSON。HTTP 錯誤以 urllib.error.HTTPError 拋出。測試換成假的，不真的連網
@@ -128,7 +130,7 @@ class OpenRouterEngine:
 
     def record(self, image: ImageInput) -> EngineRecording:
         """真的呼叫一次 OpenRouter（必要時改呼叫備援），回傳原始紀錄（不含金鑰與圖片內容）。"""
-        upright = load_upright(image.content, image.image_id)
+        upright = load_upright(image.content, image.image_id, max_side=MAX_SIDE)
         data_url = f"data:{upright.mime_type};base64," + base64.b64encode(upright.content).decode("ascii")
 
         started = perf_counter()
