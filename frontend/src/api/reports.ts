@@ -1,6 +1,13 @@
 import { apiRequest } from './client'
 import type { ConfirmedDrug } from './drugs'
 
+export interface ReportSummary {
+  report_id: string
+  case_id: string
+  generated_at: string
+  drug_count: number
+  product_count: number
+}
 export interface Citation {
   citation_id: string
   source: string
@@ -83,6 +90,15 @@ export function createReport(caseId: string) {
   return apiRequest<Report>(`/api/assessments/${encodeURIComponent(caseId)}/report`, {
     method: 'POST',
   })
+}
+export function getReport(reportId: string) {
+  return apiRequest<Report>(`/api/reports/${encodeURIComponent(reportId)}`)
+}
+export function getReports(from = '', to = '') {
+  const query = new URLSearchParams()
+  if (from) query.set('date_from', from)
+  if (to) query.set('date_to', to)
+  return apiRequest<ReportSummary[]>(`/api/reports?${query}`)
 }
 export function taipeiDateTime(value: string) {
   return new Intl.DateTimeFormat('zh-TW', {
