@@ -319,7 +319,17 @@ onUnmounted(releaseAllPreviews)
       </template>
     </dialog>
 
-    <p><button type="button" disabled>前往辨識保健食品（尚未開放）</button></p>
-    <p>保健食品上傳頁尚未開放，後續功能將另行串接。</p>
+    <p>
+      <button
+        type="button"
+        :disabled="
+          isBatchFrozen || isNavigating || (flow.medicines.length > 0 && !flow.allConfirmed)
+        "
+        @click="router.push('/supplement-upload')"
+      >
+        前往辨識保健食品
+      </button>
+    </p>
+    <p>未提供用藥資料時，可直接前往辨識保健食品。若已加入藥品，請先完成校對。</p>
   </main>
 </template>

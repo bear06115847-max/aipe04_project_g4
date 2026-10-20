@@ -43,6 +43,7 @@ const router = createRouter({
       name: 'api-test',
       component: () => import('@/views/ApiTestView.vue'),
     },
+    { path: '/supplement-upload', name: 'supplement-upload', component: () => import('@/views/SupplementUploadView.vue') },
   ],
 })
 
