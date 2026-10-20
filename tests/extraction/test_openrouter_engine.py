@@ -1,10 +1,13 @@
 """OpenRouter 轉接器：用假的傳輸層測，不連網、不需要金鑰。"""
 
+import base64
 import json
 import urllib.error
+from io import BytesIO
 from uuid import UUID
 
 import pytest
+from PIL import Image
 
 from app.extraction import ExtractionError, ImageInput, ReplayEngine, extract
 from app.extraction.engines.openrouter import OpenRouterEngine, Route, to_engine_result
@@ -196,3 +199,22 @@ def test_轉換結果可存成錄製檔交給辨識函式重播(make_jpeg, tmp_p
     )
     ExtractionDraft.model_validate(draft.model_dump())
     assert draft.extraction_meta.ocr_version == "openrouter/google/gemini-3.8-flash/google-ai-studio/prompt-g1"
+
+
+def test_大照片先縮小再送但座標仍對應原圖(make_jpeg):
+    transport = FakeTransport()
+    rec = OpenRouterEngine(transport, PRIMARY).record(
+        ImageInput(image_id="big", content=make_jpeg(4000, 3000))
+    )
+    sent = transport.bodies[0]["messages"][0]["content"][0]["image_url"]["url"].split(",", 1)[1]
+    assert Image.open(BytesIO(base64.b64decode(sent))).size == (2400, 1800)
+    assert (rec.image_width, rec.image_height) == (4000, 3000)
+
+
+def test_小照片原檔照送(make_jpeg):
+    transport, content = FakeTransport(), make_jpeg(1000, 800)
+    OpenRouterEngine(transport, PRIMARY).record(
+        ImageInput(image_id="small", content=content)
+    )
+    sent = transport.bodies[0]["messages"][0]["content"][0]["image_url"]["url"].split(",", 1)[1]
+    assert base64.b64decode(sent) == content
