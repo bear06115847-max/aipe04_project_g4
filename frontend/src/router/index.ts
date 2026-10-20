@@ -45,6 +45,7 @@ const router = createRouter({
     },
     { path: '/supplement-upload', name: 'supplement-upload', component: () => import('@/views/SupplementUploadView.vue') },
     { path: '/supplement-review', name: 'supplement-review', component: () => import('@/views/SupplementReviewView.vue') },
+    { path: '/report/:caseId', name: 'report', component: () => import('@/views/ReportView.vue') },
   ],
 })
 

@@ -123,6 +123,7 @@ export function submissionFor(product: SupplementProduct): VerificationSubmissio
 
 export const useSupplementFlowStore = defineStore('supplementFlow', () => {
   const products = ref<SupplementProduct[]>([])
+  const caseId = ref<string | null>(null)
   function addBatch(files: File[], draft: SupplementDraft) {
     if (products.value.some((product) => product.id === draft.product_id)) return
     products.value.push({
@@ -207,5 +208,5 @@ export const useSupplementFlowStore = defineStore('supplementFlow', () => {
     row.error = nutrientError(row.value, ingredients)
     if (!row.editing && !row.error) row.locked = locked
   }
-  return { products, addBatch, addRow, editRow, cancelRow, saveRow, setLocked }
+  return { products, caseId, addBatch, addRow, editRow, cancelRow, saveRow, setLocked }
 })
