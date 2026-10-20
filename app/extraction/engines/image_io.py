@@ -23,8 +23,12 @@ class UprightImage:
     height: int
 
 
-def load_upright(content: bytes, image_id: str) -> UprightImage:
-    """回傳轉正後的圖。方向本來就正確時原檔照送，避免重新壓縮損失畫質。"""
+def load_upright(content: bytes, image_id: str, max_side: int | None = None) -> UprightImage:
+    """回傳轉正後的圖。方向本來就正確、也不用縮圖時原檔照送，避免重新壓縮損失畫質。
+
+    max_side：長邊超過就縮小再送（只給回傳正規化座標的引擎用）。width／height 仍是轉正後原圖的尺寸，
+    座標換算才會對應到使用者看到的那張照片。
+    """
     try:
         img = Image.open(BytesIO(content))
         img.load()
@@ -33,10 +37,15 @@ def load_upright(content: bytes, image_id: str) -> UprightImage:
 
     orientation = img.getexif().get(_EXIF_ORIENTATION, 1)
     fmt = (img.format or "").upper()
-    if orientation == 1 and fmt in {"JPEG", "PNG"}:
+    small_enough = max_side is None or max(img.size) <= max_side
+    if orientation == 1 and fmt in {"JPEG", "PNG"} and small_enough:
         return UprightImage(content, f"image/{fmt.lower()}", img.width, img.height)
 
     upright = ImageOps.exif_transpose(img)
+    width, height = upright.size
+    if not small_enough:
+        upright = upright.copy()
+        upright.thumbnail((max_side, max_side))
     buf = BytesIO()
     if fmt == "PNG":
         upright.save(buf, format="PNG")
@@ -45,4 +54,4 @@ def load_upright(content: bytes, image_id: str) -> UprightImage:
         # JPEG、HEIC 轉檔後等格式一律存成 JPEG；品質 95 讓小字不因壓縮而糊掉
         upright.convert("RGB").save(buf, format="JPEG", quality=95)
         mime = "image/jpeg"
-    return UprightImage(buf.getvalue(), mime, upright.width, upright.height)
+    return UprightImage(buf.getvalue(), mime, width, height)
