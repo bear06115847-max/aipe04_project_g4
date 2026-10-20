@@ -62,7 +62,38 @@ export type ConfirmedDrug = {
   | { dose_mg?: null; times_per_day?: null }
 )
 
-// 只負責呼叫 API；目前後端回的是 Stub 草稿，不代表真實 OCR 成功。
+// 後端已用 Pydantic 驗證格式；只檢查上傳頁與 Store 實際依賴的欄位。
+export function isUsableDraft(value: unknown, fileCount: number): value is DrugDraft {
+  if (typeof value !== 'object' || value === null) return false
+  const draft = value as Partial<DrugDraft>
+  if (
+    typeof draft.draft_id !== 'string' ||
+    !draft.draft_id.trim() ||
+    !Array.isArray(draft.rows) ||
+    !Array.isArray(draft.source_images) ||
+    draft.source_images.length !== fileCount ||
+    typeof draft.extraction_meta?.ocr_version !== 'string'
+  )
+    return false
+
+  const images = draft.source_images
+  // findSourceFile 依上傳順序找原圖：img-01 是第 1 張、img-02 是第 2 張…。
+  if (!images.every((image, i) => image?.image_id === `img-${String(i + 1).padStart(2, '0')}`))
+    return false
+
+  // 校對列需要可用的名稱與來源；不重複驗證列舉、座標或辨識信心值。
+  return draft.rows.every(
+    (row) =>
+      row !== null &&
+      typeof row === 'object' &&
+      typeof row.row_id === 'string' &&
+      row.row_id.trim() !== '' &&
+      typeof row.raw_name === 'string' &&
+      images.some((image) => image.image_id === row.source_image_id),
+  )
+}
+
+// 辨識模式由後端決定；ocr_version 為 stub 時，呼叫端才顯示測試資料提醒。
 // 呼叫端應在 await 前保留本批 File[] 快照，成功後用同一份快照加入 Store。
 export function uploadDrugDraft(files: readonly File[]): Promise<DrugDraft> {
   const body = new FormData()
