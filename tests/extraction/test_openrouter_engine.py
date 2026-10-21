@@ -45,7 +45,7 @@ class FakeTransport:
     def __init__(self, *outcomes):
         self.outcomes, self.bodies = list(outcomes) or [reply()], []
 
-    def __call__(self, body):
+    def __call__(self, body, timeout=None):
         self.bodies.append(body)
         outcome = self.outcomes.pop(0)
         if isinstance(outcome, Exception):
@@ -218,3 +218,31 @@ def test_小照片原檔照送(make_jpeg):
     )
     sent = transport.bodies[0]["messages"][0]["content"][0]["image_url"]["url"].split(",", 1)[1]
     assert base64.b64decode(sent) == content
+
+
+# ─── 等待時間上限 ─────────────────────────────────────────────
+
+
+class Trickle:
+    """對方一直送「還在處理」的空白、永遠不結束。"""
+
+    def read1(self, n):
+        return b" "
+
+
+def test_對方一直送空白時超過總時間就逾時(monkeypatch):
+    clock = iter(range(0, 1000, 10))  # 每讀一次過 10 秒
+    monkeypatch.setattr("app.extraction.engines.openrouter.perf_counter", lambda: next(clock))
+    from app.extraction.engines.openrouter import read_before
+
+    with pytest.raises(TimeoutError):
+        read_before(Trickle(), deadline=55)
+
+
+def test_主型號失敗時剩下的時間不夠就不呼叫備援(monkeypatch, make_jpeg):
+    clock = iter([0, 50, 50, 50])  # 主型號 50 秒後才回 503，只剩 5 秒
+    monkeypatch.setattr("app.extraction.engines.openrouter.perf_counter", lambda: next(clock))
+    transport = FakeTransport(http_error(503), reply())
+    with pytest.raises(ExtractionError, match="呼叫 OpenRouter 失敗"):
+        record(transport, make_jpeg, fallback=FALLBACK)
+    assert len(transport.bodies) == 1
