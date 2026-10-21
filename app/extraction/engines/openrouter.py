@@ -22,6 +22,8 @@ import re
 import urllib.error
 import urllib.request
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeout
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from time import perf_counter
@@ -65,21 +67,26 @@ def http_transport(api_key: str) -> Transport:
             data=json.dumps(body).encode("utf-8"),
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
         )
-        deadline = perf_counter() + timeout
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            return json.loads(read_before(response, deadline))
+
+        def post() -> dict[str, Any]:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                return json.load(response)
+
+        return within(post, timeout)
 
     return send
 
 
-def read_before(response: Any, deadline: float) -> bytes:
-    """有多少讀多少，超過 deadline 就拋 TimeoutError（不管對方是不是還在持續送空白）。"""
-    chunks = []
-    while chunk := response.read1(65536):
-        chunks.append(chunk)
-        if perf_counter() > deadline:
-            raise TimeoutError("超過等待時間上限")
-    return b"".join(chunks)
+def within(fn: Callable[[], Any], timeout: float) -> Any:
+    """在背景執行緒跑 fn，最多等 timeout 秒：連線、等標頭、讀內容卡在哪一段都切得斷。
+    逾時後背景的請求不會被取消（照樣會計費），只是不再等它。"""
+    pool = ThreadPoolExecutor(max_workers=1)
+    try:
+        return pool.submit(fn).result(timeout=timeout)
+    except FuturesTimeout as e:
+        raise TimeoutError("超過等待時間上限") from e
+    finally:
+        pool.shutdown(wait=False)
 
 
 def _strict(schema: Any, defs: dict[str, Any]) -> Any:
@@ -158,14 +165,14 @@ class OpenRouterEngine:
         route, primary_error = self.primary, None
         try:
             response = self._send(self._body(route, data_url), TOTAL_SECONDS)
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
+        except (OSError, ValueError) as e:  # 網路、逾時、讀到一半斷線、回應不是 JSON
             remaining = TOTAL_SECONDS - (perf_counter() - started)
             if self.fallback is None or not _retryable(e) or remaining < MIN_FALLBACK_SECONDS:
                 raise ExtractionError(f"{image.image_id} 呼叫 OpenRouter 失敗：{e}") from e
             route, primary_error = self.fallback, _describe(e)
             try:
                 response = self._send(self._body(route, data_url), remaining)
-            except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e2:
+            except (OSError, ValueError) as e2:
                 raise ExtractionError(f"{image.image_id} 主型號與備援都失敗：{primary_error}；{e2}") from e2
         latency_ms = (perf_counter() - started) * 1000
 

@@ -223,20 +223,20 @@ def test_小照片原檔照送(make_jpeg):
 # ─── 等待時間上限 ─────────────────────────────────────────────
 
 
-class Trickle:
-    """對方一直送「還在處理」的空白、永遠不結束。"""
+def test_卡住的請求在時間上限到時就切斷():
+    import time
 
-    def read1(self, n):
-        return b" "
+    from app.extraction.engines.openrouter import within
 
-
-def test_對方一直送空白時超過總時間就逾時(monkeypatch):
-    clock = iter(range(0, 1000, 10))  # 每讀一次過 10 秒
-    monkeypatch.setattr("app.extraction.engines.openrouter.perf_counter", lambda: next(clock))
-    from app.extraction.engines.openrouter import read_before
-
+    started = time.perf_counter()
     with pytest.raises(TimeoutError):
-        read_before(Trickle(), deadline=55)
+        within(lambda: time.sleep(3), timeout=0.2)
+    assert time.perf_counter() - started < 1
+
+
+def test_讀到一半斷線也轉成辨識錯誤(make_jpeg):
+    with pytest.raises(ExtractionError, match="呼叫 OpenRouter 失敗"):
+        record(FakeTransport(ConnectionResetError("reset")), make_jpeg)
 
 
 def test_主型號失敗時剩下的時間不夠就不呼叫備援(monkeypatch, make_jpeg):
