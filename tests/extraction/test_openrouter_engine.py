@@ -235,6 +235,22 @@ def test_卡住的請求在時間上限到時就切斷():
     assert time.perf_counter() - started < 1
 
 
+class Trickle:
+    """對方一直送「還在處理」的空白、永遠不結束。"""
+
+    def read1(self, n):
+        return b" "
+
+
+def test_背景讀取自己也會在時間到時停止(monkeypatch):
+    clock = iter(range(0, 1000, 10))  # 每讀一次過 10 秒
+    monkeypatch.setattr("app.extraction.engines.openrouter.perf_counter", lambda: next(clock))
+    from app.extraction.engines.openrouter import read_before
+
+    with pytest.raises(TimeoutError):
+        read_before(Trickle(), deadline=55)
+
+
 @pytest.mark.parametrize("error", [ConnectionResetError("reset"), http.client.IncompleteRead(b"")])
 def test_讀到一半斷線也轉成辨識錯誤(make_jpeg, error):
     with pytest.raises(ExtractionError, match="呼叫 OpenRouter 失敗"):

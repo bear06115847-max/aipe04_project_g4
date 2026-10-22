@@ -69,13 +69,26 @@ def http_transport(api_key: str) -> Transport:
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
         )
 
+        deadline = perf_counter() + timeout
+
         def post() -> dict[str, Any]:
+            # 背景執行緒自己也看時間：外面不等了之後，這裡最晚再一次讀取逾時就關掉連線結束，不會一直留著
             with urllib.request.urlopen(request, timeout=timeout) as response:
-                return json.load(response)
+                return json.loads(read_before(response, deadline))
 
         return within(post, timeout)
 
     return send
+
+
+def read_before(response: Any, deadline: float) -> bytes:
+    """有多少讀多少，超過 deadline 就拋 TimeoutError（不管對方是不是還在持續送空白）。"""
+    chunks = []
+    while chunk := response.read1(65536):
+        chunks.append(chunk)
+        if perf_counter() > deadline:
+            raise TimeoutError("超過等待時間上限")
+    return b"".join(chunks)
 
 
 def within(fn: Callable[[], Any], timeout: float) -> Any:
