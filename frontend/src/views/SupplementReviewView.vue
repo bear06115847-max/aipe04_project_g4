@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { getCatalog, type Ingredient } from '../api/catalog'
 import { errorMessage } from '../api/client'
 import {
@@ -10,6 +10,7 @@ import {
   isTestExtraction,
   unitOptions,
 } from '../api/supplements'
+import { createAssessment } from '../api/reports'
 import { useMedicineFlowStore } from '../stores/medicineFlow'
 import {
   productReady,
@@ -18,6 +19,7 @@ import {
   type NutrientRow,
 } from '../stores/supplementFlow'
 
+const router = useRouter()
 const flow = useSupplementFlowStore()
 const medicine = useMedicineFlowStore()
 const ingredients = ref<Ingredient[]>([])
@@ -57,7 +59,6 @@ const canSubmit = computed(
     (!medicine.medicines.length || medicine.allConfirmed) &&
     flow.products.every((product) => productReady(product, ingredients.value)),
 )
-const allSaved = computed(() => flow.products.length > 0 && flow.products.every(product => product.savedProductId && product.savedPayload === JSON.stringify(submissionFor(product))))
 async function loadCatalog() {
   catalogBusy.value = true
   error.value = ''
@@ -89,6 +90,7 @@ async function submit() {
   if (!canSubmit.value) return
   busy.value = true
   error.value = ''
+  flow.caseId = null
   try {
     const ids: string[] = []
     for (const [index, product] of flow.products.entries()) {
@@ -103,7 +105,10 @@ async function submit() {
       }
       ids.push(product.savedProductId)
     }
-    stage.value = `已保存 ${ids.length} 罐`
+    stage.value = '正在評估…'
+    const result = await createAssessment(medicine.confirmedDrugs, ids)
+    flow.caseId = result.case_id
+    await router.push(`/report/${result.case_id}`)
   } catch (reason) {
     error.value = errorMessage(reason)
   } finally {
@@ -114,8 +119,8 @@ async function submit() {
 onMounted(loadCatalog)
 onUnmounted(() => urls.forEach((url) => URL.revokeObjectURL(url)))
 onBeforeRouteLeave(() => {
-  // 保存產品期間避免離開，保留錯誤後重試的入口。
-  if (busy.value) return false
+  // 成功取得 caseId 後允許前往報告，其餘送出中避免離開。
+  if (busy.value && !flow.caseId) return false
 })
 </script>
 
@@ -123,7 +128,7 @@ onBeforeRouteLeave(() => {
   <main>
     <h1>保健食品人工校對</h1>
     <p>資料暫存在本機，重新整理後需要重新上傳。請依原始標示確認每份量及成分。</p>
-    <p>保存只建立後端產品資料，尚未送出評估。</p>
+    <p>目前評估與報告使用後端示範實作及測試帳號，結果不代表你的實際健康評估。</p>
     <p><RouterLink to="/supplement-upload">返回上傳／新增其他保健食品</RouterLink></p>
     <p v-if="!flow.products.length">目前沒有保健食品資料，請先上傳圖片。</p>
     <p v-if="medicine.medicines.length && !medicine.allConfirmed" role="alert">
@@ -375,11 +380,9 @@ onBeforeRouteLeave(() => {
         <p v-if="flow.products.length && !canSubmit && !busy">
           有未確認項目，請填寫產品名稱、鎖定所有成分，並填寫大於 0 的每份量與實際服用方式。
         </p>
-        <button type="submit" :disabled="!canSubmit">保存已核對的保健食品</button>
+        <button type="submit" :disabled="!canSubmit">下一步：送出並產生報告</button>
       </fieldset>
     </form>
-    <p v-if="allSaved" role="status">已保存 {{ flow.products.length }} 罐，尚未送出評估。</p>
-    <button type="button" disabled>產生報告（尚未開放）</button>
     <p v-if="busy" role="status">{{ stage }}</p>
   </main>
 </template>
