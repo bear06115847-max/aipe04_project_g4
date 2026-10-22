@@ -139,8 +139,12 @@ onUnmounted(() => {
         <p v-if="allConfirmed">本機藥品資料已確認完成，尚未送出評估。</p>
         <p v-else-if="medicines.length > 0">有未確認項目，麻煩請再檢查一次！</p>
       </div>
-      <button type="button" disabled>下一步（尚未開放）</button>
-      <p>保健食品上傳頁尚未開放，後續功能將另行串接。</p>
+      <button type="button" :disabled="!allConfirmed" @click="$router.push('/supplement-upload')">
+        下一步：保健食品圖片上傳
+      </button>
+      <p v-if="!medicines.length">
+        <RouterLink to="/supplement-upload">未提供用藥資料，前往保健食品圖片上傳</RouterLink>
+      </p>
     </section>
   </main>
 </template>
