@@ -1,6 +1,7 @@
 """OpenRouter 轉接器：用假的傳輸層測，不連網、不需要金鑰。"""
 
 import base64
+import http.client
 import json
 import urllib.error
 from io import BytesIO
@@ -234,9 +235,10 @@ def test_卡住的請求在時間上限到時就切斷():
     assert time.perf_counter() - started < 1
 
 
-def test_讀到一半斷線也轉成辨識錯誤(make_jpeg):
+@pytest.mark.parametrize("error", [ConnectionResetError("reset"), http.client.IncompleteRead(b"")])
+def test_讀到一半斷線也轉成辨識錯誤(make_jpeg, error):
     with pytest.raises(ExtractionError, match="呼叫 OpenRouter 失敗"):
-        record(FakeTransport(ConnectionResetError("reset")), make_jpeg)
+        record(FakeTransport(error), make_jpeg)
 
 
 def test_主型號失敗時剩下的時間不夠就不呼叫備援(monkeypatch, make_jpeg):

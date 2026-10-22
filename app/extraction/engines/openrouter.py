@@ -26,6 +26,7 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeout
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from http.client import HTTPException
 from time import perf_counter
 from typing import Any
 
@@ -165,14 +166,14 @@ class OpenRouterEngine:
         route, primary_error = self.primary, None
         try:
             response = self._send(self._body(route, data_url), TOTAL_SECONDS)
-        except (OSError, ValueError) as e:  # 網路、逾時、讀到一半斷線、回應不是 JSON
+        except (OSError, HTTPException, ValueError) as e:  # 網路、逾時、讀到一半斷線、回應不是 JSON
             remaining = TOTAL_SECONDS - (perf_counter() - started)
             if self.fallback is None or not _retryable(e) or remaining < MIN_FALLBACK_SECONDS:
                 raise ExtractionError(f"{image.image_id} 呼叫 OpenRouter 失敗：{e}") from e
             route, primary_error = self.fallback, _describe(e)
             try:
                 response = self._send(self._body(route, data_url), remaining)
-            except (OSError, ValueError) as e2:
+            except (OSError, HTTPException, ValueError) as e2:
                 raise ExtractionError(f"{image.image_id} 主型號與備援都失敗：{primary_error}；{e2}") from e2
         latency_ms = (perf_counter() - started) * 1000
 
