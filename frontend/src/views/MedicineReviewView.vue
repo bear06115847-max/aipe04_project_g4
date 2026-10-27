@@ -120,14 +120,14 @@ onUnmounted(() => {
 
 <template>
   <main>
-    <h1>藥人工校對</h1>
+    <h1>核對你的藥品名稱</h1>
     <p>資料暫存在本機，返回上傳頁可繼續新增批次；重新整理後需要重新上傳。</p>
     <p v-if="!flow.drugBatches.length && !medicines.length" role="status">
       目前沒有藥品資料，請返回上傳藥包圖片，或自行新增藥名。
     </p>
     <p><RouterLink to="/medicine-upload">返回藥圖片上傳／新增批次</RouterLink></p>
 
-    <section aria-labelledby="image-title">
+    <section class="review-panel" aria-labelledby="image-title">
       <h2 id="image-title">藥包圖片預覽</h2>
       <p v-if="!sourceImages.length">目前沒有可預覽的藥包圖片。</p>
       <figure v-for="image in sourceImages" :id="image.id" :key="image.id">
@@ -144,7 +144,7 @@ onUnmounted(() => {
       </figure>
     </section>
 
-    <section aria-labelledby="review-title">
+    <section class="review-panel" aria-labelledby="review-title">
       <h2 id="review-title">請確認資料是否正確</h2>
       <p>儲存只更新本機校對資料；鎖定表示由你確認，尚未送出評估。</p>
       <p>
@@ -159,7 +159,7 @@ onUnmounted(() => {
         目前沒有藥品列；若照片未辨識出藥名，可以按「＋新增」人工輸入。
       </p>
 
-      <ul v-else>
+      <ul v-else class="review-list">
         <li v-for="{ medicine, original, source } in reviewRows" :key="medicine.id">
           <p v-if="medicine.draftId === null">來源：手動新增（無來源圖片）</p>
           <template v-else>
@@ -259,7 +259,12 @@ onUnmounted(() => {
         <p v-if="allConfirmed">本機藥品資料已確認完成，尚未送出評估。</p>
         <p v-else-if="medicines.length > 0">有未確認項目，麻煩請再檢查一次！</p>
       </div>
-      <button type="button" :disabled="!allConfirmed" @click="$router.push('/supplement-upload')">
+      <button
+        class="primary-action"
+        type="button"
+        :disabled="!allConfirmed"
+        @click="$router.push('/supplement-upload')"
+      >
         下一步：保健食品圖片上傳
       </button>
       <p v-if="!medicines.length">

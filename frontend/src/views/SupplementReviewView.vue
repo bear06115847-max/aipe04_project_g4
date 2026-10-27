@@ -144,7 +144,7 @@ onBeforeRouteLeave(() => {
 
 <template>
   <main class="supplement-review">
-    <h1>保健食品人工校對</h1>
+    <h1>確認成分與實際攝取量</h1>
     <p>資料暫存在本機，重新整理後需要重新上傳。請依原始標示確認每份量及成分。</p>
     <p>目前評估與報告使用後端示範實作及測試帳號，結果不代表你的實際健康評估。</p>
     <p><RouterLink to="/supplement-upload">返回上傳／新增其他保健食品</RouterLink></p>
@@ -184,6 +184,7 @@ onBeforeRouteLeave(() => {
         </p>
         <p v-if="nutrientRows.length">一鍵鎖定會跳過編輯中或驗證未通過的營養素，不會送出評估。</p>
         <section
+          class="product-panel"
           v-for="(product, index) in flow.products"
           :key="product.id"
           :aria-labelledby="`product-${product.id}`"
@@ -227,7 +228,7 @@ onBeforeRouteLeave(() => {
           </p>
           <h3>營養素與每份含量</h3>
           <p v-if="!product.rows.length">目前沒有成分列，請按「＋新增營養素」。</p>
-          <ul>
+          <ul class="review-list">
             <li v-for="row in product.rows" :key="row.id">
               <p v-if="row.rawName !== null">
                 辨識原文：{{ row.rawName }}
@@ -445,7 +446,9 @@ onBeforeRouteLeave(() => {
         <p v-if="flow.products.length && !canSubmit && !busy">
           有未確認項目，請填寫產品名稱、鎖定所有成分，並填寫大於 0 的每份量與實際服用方式。
         </p>
-        <button type="submit" :disabled="!canSubmit">下一步：送出並產生報告</button>
+        <button class="primary-action" type="submit" :disabled="!canSubmit">
+          下一步：送出並產生報告
+        </button>
       </fieldset>
     </form>
     <p v-if="busy" role="status">{{ stage }}</p>
