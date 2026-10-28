@@ -12,10 +12,6 @@ function handleSubmit(): void {
 </script>
 
 <template>
-  <header>
-    <RouterLink to="/">補對了嗎?</RouterLink>
-  </header>
-
   <main>
     <h1>登入</h1>
     <p id="login-notice">目前可開啟註冊表單，但登入與建立帳號功能尚未開放。</p>
@@ -32,12 +28,7 @@ function handleSubmit(): void {
 
       <p>
         <label for="password">密碼</label>
-        <input
-          id="password"
-          v-model="password"
-          type="password"
-          autocomplete="current-password"
-        />
+        <input id="password" v-model="password" type="password" autocomplete="current-password" />
       </p>
 
       <RouterLink to="/register">註冊</RouterLink>
