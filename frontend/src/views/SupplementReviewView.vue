@@ -169,28 +169,6 @@ onBeforeRouteLeave(() => {
     <form @submit.prevent="submit">
       <fieldset :disabled="busy || catalogBusy || !ingredients.length">
         <legend>確認保健食品與實際服用方式</legend>
-        <div v-if="nutrientRows.length" class="bulk-actions" aria-label="本輪營養素鎖定操作">
-          <button
-            type="button"
-            :disabled="lockedCount === nutrientRows.length"
-            @click="flow.lockAllRows(ingredients)"
-          >
-            一鍵鎖定
-          </button>
-          <button type="button" :disabled="lockedCount === 0" @click="flow.unlockAllRows()">
-            全部解除鎖定
-          </button>
-        </div>
-        <p v-if="nutrientRows.length" role="status" aria-live="polite" aria-atomic="true">
-          <template v-if="lockedCount === nutrientRows.length">
-            本輪 {{ lockedCount }} 筆營養素已全部鎖定。
-          </template>
-          <template v-else>
-            已鎖定 {{ lockedCount }} 筆營養素，另有
-            {{ nutrientRows.length - lockedCount }} 筆需要完成校對。
-          </template>
-        </p>
-        <p v-if="nutrientRows.length">一鍵鎖定會跳過編輯中或驗證未通過的營養素，不會送出評估。</p>
         <section
           class="product-panel"
           v-for="(product, index) in flow.products"
@@ -254,6 +232,30 @@ onBeforeRouteLeave(() => {
                 </select>
               </p>
               <h3>營養素與每份含量</h3>
+              <div v-if="nutrientRows.length" class="bulk-actions" aria-label="本輪營養素鎖定操作">
+                <button
+                  type="button"
+                  :disabled="lockedCount === nutrientRows.length"
+                  @click="flow.lockAllRows(ingredients)"
+                >
+                  一鍵鎖定
+                </button>
+                <button type="button" :disabled="lockedCount === 0" @click="flow.unlockAllRows()">
+                  全部解除鎖定
+                </button>
+              </div>
+              <p v-if="nutrientRows.length" role="status" aria-live="polite" aria-atomic="true">
+                <template v-if="lockedCount === nutrientRows.length">
+                  本輪 {{ lockedCount }} 筆營養素已全部鎖定。
+                </template>
+                <template v-else>
+                  已鎖定 {{ lockedCount }} 筆營養素，另有
+                  {{ nutrientRows.length - lockedCount }} 筆需要完成校對。
+                </template>
+              </p>
+              <p v-if="nutrientRows.length">
+                一鍵鎖定會跳過編輯中或驗證未通過的營養素，不會送出評估。
+              </p>
               <p v-if="!product.rows.length">目前沒有成分列，請按「＋新增營養素」。</p>
               <ul class="review-list">
                 <li v-for="row in product.rows" :key="row.id">
