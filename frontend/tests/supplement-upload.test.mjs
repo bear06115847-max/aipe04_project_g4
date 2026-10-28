@@ -287,6 +287,7 @@ test('review name validation also rejects blank names and submission trims a val
   const product = flow.products[0]
   product.name = ' \t\u3000 '
   assert.equal(productReady(product, []), false)
+  product.frequency = 'daily'
   product.name = '  使用者確認的名稱  '
   assert.equal(submissionFor(product).product_name, '使用者確認的名稱')
 })
